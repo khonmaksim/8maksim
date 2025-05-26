@@ -26,13 +26,12 @@ module DeBruijnExpr =
 module DeBruijnBuilder =
 
   let ref n =
-    failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+    Ref n
 
   let abs e =
-    failwith "IMPLEMENT" // REMOVE this line when you implement your own code
-
+    Abs e
   let app f e =
-    failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+    App (f, e)
 
   let ($) f e = app f e
 
