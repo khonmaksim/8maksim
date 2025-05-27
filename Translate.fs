@@ -1,38 +1,41 @@
 module CS220.Translate
 
-open CS220
+open CS220.Expr
 open CS220.DeBruijnExpr
 
 exception UnknownIdentifierException of string
 
-/// Convert an Expr to a DeBruijnExpr
+/// Convert a named-variable Expr to a De Bruijn indexed expression (1-based indices)
 let toDebruijn (expr: Expr) : DeBruijnExpr =
-    let rec build env = function
-        | Expr.Var v ->
-            match List.tryFindIndex ((=) v) env with
+    let rec walk env e =
+        match e with
+        | Var name ->
+            match List.tryFindIndex ((=) name) env with
             | Some idx -> Ref (idx + 1)
-            | None -> raise (UnknownIdentifierException v)
-        | Expr.Lambda (v, body) ->
-            Abs (build (v :: env) body)
-        | Expr.Apply (f, e) ->
-            App (build env f, build env e)
-    build [] expr
+            | None -> raise (UnknownIdentifierException name)
+        | Lambda (name, body) ->
+            // push the binder name at head
+            let newEnv = name :: env
+            Abs (walk newEnv body)
+        | Apply (f, x) ->
+            App (walk env f, walk env x)
+    walk [] expr
 
-/// Convert a DeBruijnExpr to an Expr
+/// Convert a De Bruijn indexed expression back to a named-variable Expr
 let toExpr (dexpr: DeBruijnExpr) : Expr =
-    // Generate fresh variable names: v1, v2, v3, ...
-    let rec build env nextName = function
-        | Ref n ->
-            if n <= List.length env then
-                Expr.Var (List.item (n - 1) env), nextName
-            else
-                failwithf "Invalid DeBruijn index: %d" n
+    let rec walk env depth d =
+        match d with
+        | Ref idx when idx >= 1 && idx <= List.length env ->
+            // 1-based index: 1 refers to head of env
+            Var (List.item (idx - 1) env)
+        | Ref idx ->
+            // invalid index
+            raise (UnknownIdentifierException (sprintf "%d" idx))
         | Abs body ->
-            let name = sprintf "v%d" nextName
-            let exprBody, nextName' = build (env @ [name]) (nextName + 1) body
-            Expr.Lambda (name, exprBody), nextName'
-        | App (f, e) ->
-            let fExpr, nextName' = build env nextName f
-            let eExpr, nextName'' = build env nextName' e
-            Expr.Apply (fExpr, eExpr), nextName''
-    fst (build [] 1 dexpr)
+            // generate a fresh variable name
+            let varName = sprintf "v%d" depth
+            let newEnv = varName :: env
+            Lambda (varName, walk newEnv (depth + 1) body)
+        | App (f, x) ->
+            Apply (walk env depth f, walk env depth x)
+    walk [] 0 dexpr

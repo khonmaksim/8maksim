@@ -1,100 +1,160 @@
 module CS220.Arith
 
 /// Please use the builder to construct expressions.
-open DeBruijnBuilder
-
+open CS220.DeBruijnBuilder
+open CS220.DeBruijnExpr
+open CS220.Evaluate
 /// True (λ λ 2).
 let t: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  abs (abs (ref 2))
 
 /// False (λ λ 1).
 let f: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  abs (abs (ref 1))
 
 /// If-then-else. (λ λ λ ((3 2) 1))
 let ite: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  abs (abs (abs (
+    (ref 3 $ ref 2) $ ref 1
+  )) )
 
 /// Pair. (λ λ λ ((1 3) 2))
 let pair: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  abs (abs (abs (
+    (ref 1 $ ref 3) $ ref 2
+  )) )
 
 /// Car. (λ (1 λ λ 2))
 let fst: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  abs (
+    ref 1 $ abs (abs (ref 2))
+  )
 
 /// Cdr. (λ (1 λ λ 1))
 let snd: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  abs (
+    ref 1 $ abs (abs (ref 1))
+  )
 
 /// Zero (ル ル 1).
 let zero = f (* Zero = False *)
 
 /// Successor (λ λ λ (2 ((3 2) 1))).
 let succ: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
-
-/// IsZero?
+  abs (abs (abs (
+    ref 2 $ ((ref 3 $ ref 2) $ ref 1)
+  )))
 let isZero: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  abs (
+    (ref 1 $ (abs f)) $ t
+  )
 
 /// Church numeral: One.
 let one: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  nf (succ $ zero)
 
 /// Church numeral: Two.
 let two: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  nf (succ $ one)
 
 /// Church numeral: Three.
 let three: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  nf (succ $ two)
 
 /// Church numeral: Four.
 let four: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  nf (succ $ three)
 
 /// Church numeral: Five.
 let five: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  nf (succ $ four)
 
 /// Church numeral: Six.
 let six: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  nf (succ $ five)
 
 /// Church numeral: Seven.
 let seven: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  nf (succ $ six)
 
 /// Church numeral: Eight.
 let eight: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  nf (succ $ seven)
 
 /// Church numeral: Nine.
 let nine: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  nf (succ $ eight)
 
-/// Addition.
-let add: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
 
-/// Predecessor.
+/// Addition. Church add = λm.λn.λf.λx. m f (n f x)
+let add : DeBruijnExpr =
+  abs (    // m
+  abs (    // n
+  abs (    // f
+  abs (    // x
+    // (m f) ( (n f) x )
+    app
+      (app (ref 4) (ref 2))               // m f
+      (app
+         (app (ref 3) (ref 2))            // n f
+         (ref 1))                         // x
+  ))))
+
+/// Predecessor. λn.λf.λx. n (λg.λh. h (g f)) (λu. x) (λu. u)
 let pred: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  abs (abs (abs (
+    (ref 3 $
+      abs (abs (
+        ref 1 $ (ref 2 $ ref 4)
+      ))
+    ) $
+    abs (ref 2) $
+    abs (ref 1)
+  )))
 
-/// Subtraction.
+/// Subtraction. sub = λm.λn. n pred m
 let sub: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  abs (abs (
+    (ref 1 $ pred) $ ref 2
+  ))
 
 /// Convert a Church number to a natural number.
 /// val toNatural: DeBruijnExpr -> int
 let toNatural (dexpr: DeBruijnExpr) =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+    // normalize to ensure it's in standard form
+    let normal = nf dexpr
+    match normal with
+    | Abs (Abs body) ->
+        let rec go expr acc =
+            match expr with
+            | App (Ref 2, tail) -> go tail (acc + 1)
+            | Ref 1 -> acc
+            | _ -> failwith "toNatural: not a Church numeral"
+        go body 0
+    | _ -> failwith "toNatural: not a Church numeral"
 
 /// Multiplication.
 let mul: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  abs (abs (abs (abs (
+    (ref 4 $ (ref 3 $ ref 2)) $ ref 1
+  ))))
 
-/// Factorial.
+/// Factorial using the Y combinator:
+/// Y = λh. (λx. h (x x)) (λx. h (x x))
+/// F = λf.λn. ite (isZero n) one (mul n (f (pred n)))
 let factorial: DeBruijnExpr =
-  failwith "IMPLEMENT" // REMOVE this line when you implement your own code
+  // Y combinator
+  (abs (
+    (abs (
+      ref 2 $ (ref 1 $ ref 1)
+    ))
+    $ abs (
+        ref 2 $ (ref 1 $ ref 1)
+    )
+  ))
+  $
+  // F helper function
+  (abs (abs (
+    // apply ite to cond, then branch, else branch
+    ((ite $ (isZero $ ref 1)) $ one) $ (mul $ ref 1 $ (ref 2 $ pred $ ref 1))
+  )))

@@ -1,50 +1,51 @@
 module CS220.Evaluate
 
-/// Shift De Bruijn indices by d positions above cutoff c
-let rec shift d c = function
-  | Ref k -> 
-      if k >= c then Ref (k + d) else Ref k
-  | Abs body -> 
-      Abs (shift d (c + 1) body)
-  | App (func, arg) -> 
-      App (shift d c func, shift d c arg)
+open CS220.DeBruijnExpr
 
-/// Substitute expression s for variable j in expression t
-let rec subst j s t =
-  match t with
-  | Ref k ->
-      if k = j then s
-      elif k > j then Ref (k - 1)
-      else Ref k
-  | Abs body ->
-      Abs (subst (j + 1) (shift 1 0 s) body)
-  | App (func, arg) ->
-      App (subst j s func, subst j s arg)
+/// Shift all free indices in expr by 'd', adjusting those > cutoff 'c'.
+let rec shift d c expr =
+    match expr with
+    | Ref k when k > c -> Ref (k + d)
+    | Ref k -> Ref k
+    | Abs body -> Abs (shift d (c + 1) body)
+    | App (f, x) -> App (shift d c f, shift d c x)
 
-/// Perform one step of beta reduction
-let rec betaReduce = function
-  | App (Abs body, arg) ->
-      // Beta reduction: substitute arg for variable 1 in body, then shift down
-      let substituted = subst 1 (shift 1 0 arg) body
-      Some (shift (-1) 0 substituted)
-  | App (func, arg) ->
-      // Try to reduce function first
-      match betaReduce func with
-      | Some func' -> Some (App (func', arg))
-      | None ->
-          // If function can't be reduced, try argument
-          match betaReduce arg with
-          | Some arg' -> Some (App (func, arg'))
-          | None -> None
-  | Abs body ->
-      // Try to reduce body
-      match betaReduce body with
-      | Some body' -> Some (Abs body')
-      | None -> None
-  | Ref _ -> None
+/// Substitute all occurrences of index 'j' with substitution 's' in expr.
+/// Assumes 's' has been shifted appropriately for top-level substitution.
+let rec subst j s expr =
+    match expr with
+    | Ref k when k = j -> s
+    | Ref k when k > j -> Ref (k - 1)
+    | Ref k -> Ref k
+    | Abs body ->
+        // under a binder, increase j and shift s
+        Abs (subst (j + 1) (shift 1 0 s) body)
+    | App (f, x) -> App (subst j s f, subst j s x)
 
-/// Return the normal form of the given DeBruijnExpr
+/// Perform a single beta-reduction step if possible
+let rec oneStep expr =
+    match expr with
+    | App (Abs body, arg) ->
+        // beta-redex: substitute arg for index 1 in body
+        let argShifted = shift 1 0 arg
+        let substed = subst 1 argShifted body
+        // shift back after substitution
+        Some (shift -1 0 substed)
+    | App (f, x) ->
+        match oneStep f with
+        | Some f' -> Some (App (f', x))
+        | None ->
+            match oneStep x with
+            | Some x' -> Some (App (f, x'))
+            | None -> None
+    | Abs body ->
+        match oneStep body with
+        | Some b' -> Some (Abs b')
+        | None -> None
+    | Ref _ -> None
+
+/// Return the normal form of the given DeBruijnExpr.
 let rec nf e =
-  match betaReduce e with
-  | Some e' -> nf e'  // Continue reducing
-  | None -> e         // Already in normal form
+    match oneStep e with
+    | Some e' -> nf e'
+    | None -> e
