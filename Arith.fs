@@ -36,8 +36,9 @@ let snd: DeBruijnExpr =
     ref 1 $ abs (abs (ref 1))
   )
 
-/// Zero (ル ル 1).
-let zero = f (* Zero = False *)
+/// Zero (λ λ 1).
+let zero: DeBruijnExpr =
+  abs (abs (ref 1))
 
 /// Successor (λ λ λ (2 ((3 2) 1))).
 let succ: DeBruijnExpr =
@@ -51,39 +52,39 @@ let isZero: DeBruijnExpr =
 
 /// Church numeral: One.
 let one: DeBruijnExpr =
-  nf (succ $ zero)
+  abs (abs (ref 2 $ ref 1))
 
 /// Church numeral: Two.
 let two: DeBruijnExpr =
-  nf (succ $ one)
+  abs (abs (ref 2 $ (ref 2 $ ref 1)))
 
 /// Church numeral: Three.
 let three: DeBruijnExpr =
-  nf (succ $ two)
+  abs (abs (ref 2 $ (ref 2 $ (ref 2 $ ref 1))))
 
 /// Church numeral: Four.
 let four: DeBruijnExpr =
-  nf (succ $ three)
+  abs (abs (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ ref 1)))))
 
 /// Church numeral: Five.
 let five: DeBruijnExpr =
-  nf (succ $ four)
+  abs (abs (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ ref 1))))))
 
 /// Church numeral: Six.
 let six: DeBruijnExpr =
-  nf (succ $ five)
+  abs (abs (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ ref 1)))))))
 
 /// Church numeral: Seven.
 let seven: DeBruijnExpr =
-  nf (succ $ six)
+  abs (abs (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ ref 1))))))))
 
 /// Church numeral: Eight.
 let eight: DeBruijnExpr =
-  nf (succ $ seven)
+  abs (abs (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ ref 1)))))))))
 
 /// Church numeral: Nine.
 let nine: DeBruijnExpr =
-  nf (succ $ eight)
+  abs (abs (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ (ref 2 $ ref 1))))))))))
 
 
 /// Addition. Church add = λm.λn.λf.λx. m f (n f x)
@@ -92,12 +93,8 @@ let add : DeBruijnExpr =
   abs (    // n
   abs (    // f
   abs (    // x
-    // (m f) ( (n f) x )
-    app
-      (app (ref 4) (ref 2))               // m f
-      (app
-         (app (ref 3) (ref 2))            // n f
-         (ref 1))                         // x
+    // m f (n f x)
+    (ref 4 $ ref 2) $ ((ref 3 $ ref 2) $ ref 1)
   ))))
 
 /// Predecessor. λn.λf.λx. n (λg.λh. h (g f)) (λu. x) (λu. u)
